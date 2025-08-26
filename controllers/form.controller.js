@@ -3,13 +3,16 @@ import Form from "../models/form.model.js";
 // Submit a new form (protected)
 export const submitForm = async (req, res) => {
   try {
-    const { name, branch, activities, date } = req.body;
+    const { name, branch, activities } = req.body;
     const userId = req.user._id; // Get userId from authenticated user
 
-    if (!name || !branch || !activities || !date) {
+    if (!name || !branch || !activities) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    // Create date with current time (server time)
+    const submissionDate = new Date();
+    
     // Check if a submission exists within the last 12 hours for the same user
     const last12Hours = new Date(Date.now() - 12 * 60 * 60 * 1000);
     const existing = await Form.findOne({
@@ -23,7 +26,14 @@ export const submitForm = async (req, res) => {
         .json({ message: "You can submit only once every 12 hours" });
     }
 
-    const form = await Form.create({ userId, name, branch, activities, date });
+    const form = await Form.create({ 
+      userId, 
+      name, 
+      branch, 
+      activities, 
+      date: submissionDate // Store the actual submission time
+    });
+    
     res.status(201).json(form);
   } catch (err) {
     console.error("SubmitForm Error:", err);
@@ -76,28 +86,34 @@ export const getUserHistory = async (req, res) => {
   }
 };
 
-// Get all user submissions with date and time information
+// Get all user activities with proper date/time formatting
 export const getAllUserActivities = async (req, res) => {
   try {
-    // Check if user is admin (optional, based on your requirements)
-    // if (!req.user.isAdmin) {
-    //   return res.status(403).json({ message: "Access denied. Admin only." });
-    // }
-    
     const forms = await Form.find()
-      .populate('userId', 'username email') // If you have user model with more info
-      .sort({ date: 1, name: 1 }); // Sort by date and name ascending
+      .sort({ date: -1 });
     
     // Format the data to include separate date and time fields
-    const formattedData = forms.map(form => ({
-      id: form._id,
-      name: form.name,
-      branch: form.branch,
-      activities: form.activities,
-      date: new Date(form.date).toLocaleDateString(),
-      time: new Date(form.date).toLocaleTimeString(),
-      datetime: form.date // Keep original for sorting if needed
-    }));
+    const formattedData = forms.map(form => {
+      const submissionDate = new Date(form.date);
+      
+      return {
+        id: form._id,
+        name: form.name,
+        branch: form.branch,
+        activities: form.activities,
+        date: submissionDate.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        }),
+        time: submissionDate.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }),
+        datetime: form.date
+      };
+    });
     
     res.status(200).json(formattedData);
   } catch (err) {
@@ -105,4 +121,3 @@ export const getAllUserActivities = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
