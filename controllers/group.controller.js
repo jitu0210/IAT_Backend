@@ -1,297 +1,214 @@
-// controllers/group.controller.js
-import Group from '../models/group.model.js';
-import mongoose from 'mongoose';
+import Group from "../models/group.model.js";
+import User from "../models/user.model.js";
 
 // Get all groups
-export const getGroups = async (req, res) => {
+export const getAllGroups = async (req, res) => {
   try {
-    const groups = await Group.find().populate('members', 'name email').populate('ratings.userId', 'name');
-    res.status(200).json(groups);
+    const groups = await Group.find().sort({ totalRating: -1 });
+    res.json(groups);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Get a single group by ID
-export const getGroup = async (req, res) => {
+// Join a group
+export const joinGroup = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { groupId } = req.params;
+    const userId = req.user.id;
     
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ message: 'Group not found' });
-    }
-    
-    const group = await Group.findById(id).populate('members', 'name email').populate('ratings.userId', 'name');
-    
+    const group = await Group.findById(groupId);
     if (!group) {
       return res.status(404).json({ message: 'Group not found' });
     }
     
-    res.status(200).json(group);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Create a new group
-export const createGroup = async (req, res) => {
-  try {
-    const { name } = req.body;
-    
-    // Check if group with same name already exists
-    const existingGroup = await Group.findOne({ name });
-    if (existingGroup) {
-      return res.status(400).json({ message: 'Group with this name already exists' });
+    // Check if user is already a member
+    const isMember = group.members.some(member => member.userId.toString() === userId);
+    if (isMember) {
+      return res.status(400).json({ message: 'You are already a member of this group' });
     }
     
-    const group = new Group({
-      name,
-      members: [req.userId] // Add the creator as a member
+    const user = await User.findById(userId);
+    
+    // Add user to group members
+    group.members.push({
+      userId: user._id,
+      name: user.name,
+      email: user.email,
+      branch: user.branch
     });
     
-    const newGroup = await group.save();
-    await newGroup.populate('members', 'name email');
+    // Add group to user's joined groups
+    user.joinedGroups.push(group._id);
     
-    res.status(201).json(newGroup);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
-// Update a group
-export const updateGroup = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, members } = req.body;
+    await Promise.all([group.save(), user.save()]);
     
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ message: 'Group not found' });
-    }
-    
-    const group = await Group.findById(id);
-    
-    if (!group) {
-      return res.status(404).json({ message: 'Group not found' });
-    }
-    
-    // Check if user is authorized to update this group
-    if (!group.members.includes(req.userId)) {
-      return res.status(403).json({ message: 'Not authorized to update this group' });
-    }
-    
-    if (name) group.name = name;
-    if (members) group.members = members;
-    
-    const updatedGroup = await group.save();
-    await updatedGroup.populate('members', 'name email').populate('ratings.userId', 'name');
-    
-    res.status(200).json(updatedGroup);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
-// Delete a group
-export const deleteGroup = async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ message: 'Group not found' });
-    }
-    
-    const group = await Group.findById(id);
-    
-    if (!group) {
-      return res.status(404).json({ message: 'Group not found' });
-    }
-    
-    // Check if user is authorized to delete this group
-    if (!group.members.includes(req.userId)) {
-      return res.status(403).json({ message: 'Not authorized to delete this group' });
-    }
-    
-    await Group.findByIdAndDelete(id);
-    
-    res.status(200).json({ message: 'Group deleted successfully' });
+    res.json({ message: 'Joined group successfully', group });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Add a rating to a group
-export const addRating = async (req, res) => {
+// Leave a group
+export const leaveGroup = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { 
-      communication, 
-      presentation, 
-      content, 
-      helpfulForCompany, 
-      helpfulForInterns, 
-      participation, 
-      comments 
-    } = req.body;
+    const { groupId } = req.params;
+    const userId = req.user.id;
     
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ message: 'Group not found' });
-    }
-    
-    const group = await Group.findById(id);
-    
+    const group = await Group.findById(groupId);
     if (!group) {
       return res.status(404).json({ message: 'Group not found' });
     }
     
-    // Check if user is a member of this group (can't rate your own group)
-    if (group.members.includes(req.userId)) {
-      return res.status(400).json({ message: 'You cannot rate a group you are a member of' });
+    // Check if user is a member
+    const memberIndex = group.members.findIndex(member => member.userId.toString() === userId);
+    if (memberIndex === -1) {
+      return res.status(400).json({ message: 'You are not a member of this group' });
     }
     
-    // Check if user has already rated this group
-    const existingRating = group.ratings.find(rating => 
-      rating.userId.toString() === req.userId
-    );
+    // Remove user from group members
+    group.members.splice(memberIndex, 1);
     
-    if (existingRating) {
-      return res.status(400).json({ message: 'You have already rated this group' });
-    }
+    // Remove group from user's joined groups
+    const user = await User.findById(userId);
+    user.joinedGroups = user.joinedGroups.filter(id => id.toString() !== groupId);
     
-    // Validate rating values (0-40)
-    const ratingValues = [communication, presentation, content, helpfulForCompany, helpfulForInterns, participation];
-    for (const value of ratingValues) {
-      if (value < 0 || value > 40) {
-        return res.status(400).json({ message: 'Rating values must be between 0 and 40' });
-      }
-    }
+    await Promise.all([group.save(), user.save()]);
     
-    // Create new rating
-    const newRating = {
-      userId: req.userId,
+    res.json({ message: 'Left group successfully', group });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Rate a group
+export const rateGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const userId = req.user.id;
+    const {
       communication,
       presentation,
       content,
       helpfulForCompany,
       helpfulForInterns,
       participation,
-      comments: comments || ''
-    };
+      comments
+    } = req.body;
     
-    // Add rating to group
-    group.ratings.push(newRating);
-    
-    // Update aggregated ratings
-    group.updateRatings();
-    
-    // Save the group with new rating
-    const updatedGroup = await group.save();
-    await updatedGroup.populate('members', 'name email').populate('ratings.userId', 'name');
-    
-    res.status(201).json(updatedGroup);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
-// Get ratings for a group
-export const getRatings = async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ message: 'Group not found' });
-    }
-    
-    const group = await Group.findById(id)
-      .populate('ratings.userId', 'name email')
-      .select('ratings');
-    
+    const group = await Group.findById(groupId);
     if (!group) {
       return res.status(404).json({ message: 'Group not found' });
     }
     
-    res.status(200).json(group.ratings);
+    // Check if user has already rated this group
+    const userRatingIndex = group.ratings.findIndex(rating => rating.userId.toString() === userId);
+    if (userRatingIndex !== -1) {
+      return res.status(400).json({ message: 'You have already rated this group' });
+    }
+    
+    const user = await User.findById(userId);
+    
+    // Add new rating
+    group.ratings.push({
+      userId: user._id,
+      userName: user.name,
+      communication,
+      presentation,
+      content,
+      helpfulForCompany,
+      helpfulForInterns,
+      participation,
+      comments
+    });
+    
+    // Update group statistics
+    group.updateStats();
+    
+    // Add rating record to user
+    user.ratings.push({
+      groupId: group._id,
+      ratedAt: new Date()
+    });
+    
+    await Promise.all([group.save(), user.save()]);
+    
+    res.json({ message: 'Rating submitted successfully', group });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Add member to group
-export const addMember = async (req, res) => {
+// Remove a rating
+export const removeRating = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { userId } = req.body;
+    const { groupId } = req.params;
+    const userId = req.user.id;
     
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ message: 'Group not found' });
-    }
-    
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: 'Invalid user ID' });
-    }
-    
-    const group = await Group.findById(id);
-    
+    const group = await Group.findById(groupId);
     if (!group) {
       return res.status(404).json({ message: 'Group not found' });
     }
     
-    // Check if user is already a member
-    if (group.members.includes(userId)) {
-      return res.status(400).json({ message: 'User is already a member of this group' });
+    // Find and remove user's rating
+    const ratingIndex = group.ratings.findIndex(rating => rating.userId.toString() === userId);
+    if (ratingIndex === -1) {
+      return res.status(400).json({ message: 'You have not rated this group' });
     }
     
-    // Add user to members
-    group.members.push(userId);
+    group.ratings.splice(ratingIndex, 1);
     
-    const updatedGroup = await group.save();
-    await updatedGroup.populate('members', 'name email').populate('ratings.userId', 'name');
+    // Update group statistics
+    group.updateStats();
     
-    res.status(200).json(updatedGroup);
+    // Remove rating record from user
+    const user = await User.findById(userId);
+    user.ratings = user.ratings.filter(rating => rating.groupId.toString() !== groupId);
+    
+    await Promise.all([group.save(), user.save()]);
+    
+    res.json({ message: 'Rating removed successfully', group });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Remove member from group - FIXED
-// Remove member from group - FIXED (using URL params)
-export const removeMember = async (req, res) => {
+// Get group details
+export const getGroup = async (req, res) => {
   try {
-    const { id, userId } = req.params; // Get userId from URL params
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ message: 'Group not found' });
-    }
-    
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: 'Invalid user ID' });
-    }
-    
-    const group = await Group.findById(id);
+    const { groupId } = req.params;
+    const group = await Group.findById(groupId);
     
     if (!group) {
       return res.status(404).json({ message: 'Group not found' });
     }
     
-    // Check if user is trying to remove themselves
-    if (req.userId !== userId) {
-      return res.status(403).json({ message: 'You can only remove yourself from a group' });
-    }
-    
-    // Check if user is a member
-    const isMember = group.members.some(memberId => memberId.toString() === userId);
-    if (!isMember) {
-      return res.status(400).json({ message: 'User is not a member of this group' });
-    }
-    
-    // Remove user from members
-    group.members = group.members.filter(memberId => memberId.toString() !== userId);
-    
-    const updatedGroup = await group.save();
-    await updatedGroup.populate('members', 'name email').populate('ratings.userId', 'name');
-    
-    res.status(200).json(updatedGroup);
+    res.json(group);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Initialize predefined groups (run once)
+export const initializeGroups = async (req, res) => {
+  try {
+    const predefinedGroups = [
+      { name: "Path finder" },
+      { name: "Nova" },
+      { name: "Fusion force" },
+      { name: "Wit squad" },
+      { name: "Explorers" }
+    ];
+    
+    // Check if groups already exist
+    const existingGroups = await Group.find();
+    if (existingGroups.length > 0) {
+      return res.status(400).json({ message: 'Groups already initialized' });
+    }
+    
+    const createdGroups = await Group.insertMany(predefinedGroups);
+    res.json({ message: 'Groups initialized successfully', groups: createdGroups });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

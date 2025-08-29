@@ -1,3 +1,4 @@
+// routes/project.routes.js
 import express from "express";
 import {
   addProject,
@@ -6,6 +7,8 @@ import {
   deleteProject,
   updateProject,
   updateProjectProgress,
+  updateProjectCheckpoints,
+  updateCheckpoint,
 } from "../controllers/project.controller.js";
 
 const router = express.Router();
@@ -24,6 +27,12 @@ router.put("/:id", updateProject);
 
 // Update just the progress of a project
 router.patch("/:id/progress", updateProjectProgress);
+
+// Update project checkpoints
+router.put("/:id/checkpoints", updateProjectCheckpoints);
+
+// Update a single checkpoint
+router.patch("/:id/checkpoints/:checkpointId", updateCheckpoint);
 
 // Delete a project by ID
 router.delete("/:id", deleteProject);

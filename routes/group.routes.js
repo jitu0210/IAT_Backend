@@ -1,48 +1,36 @@
-// routes/group.routes.js
-import express from 'express';
+import express from "express";
 import {
-  getGroups,
+  getAllGroups,
   getGroup,
-  createGroup,
-  updateGroup,
-  deleteGroup,
-  addRating,
-  getRatings,
-  addMember,
-  removeMember
-} from '../controllers/group.controller.js';
-import auth from '../middleware/authMiddleware.js';
+  joinGroup,
+  leaveGroup,
+  rateGroup,
+  removeRating,
+  initializeGroups
+} from "../controllers/group.controller.js";
+import protect from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// All routes require authentication
-router.use(auth);
+// Get all groups
+router.get("/", getAllGroups);
 
-// GET /api/v1/groups - Get all groups
-router.get('/', getGroups);
+// Get specific group
+router.get("/:groupId", getGroup);
 
-// GET /api/v1/groups/:id - Get a single group
-router.get('/:id', getGroup);
+// Join a group
+router.post("/:groupId/join", protect, joinGroup);
 
-// POST /api/v1/groups - Create a new group
-router.post('/', createGroup);
+// Leave a group
+router.post("/:groupId/leave", protect, leaveGroup);
 
-// PUT /api/v1/groups/:id - Update a group
-router.put('/:id', updateGroup);
+// Rate a group
+router.post("/:groupId/rate", protect, rateGroup);
 
-// DELETE /api/v1/groups/:id - Delete a group
-router.delete('/:id', deleteGroup);
+// Remove rating
+router.delete("/:groupId/rating", protect, removeRating);
 
-// POST /api/v1/groups/:id/ratings - Add a rating to a group
-router.post('/:id/ratings', addRating);
-
-// GET /api/v1/groups/:id/ratings - Get ratings for a group
-router.get('/:id/ratings', getRatings);
-
-// POST /api/v1/groups/:id/members - Add a member to a group
-router.post('/:id/members', addMember);
-
-// DELETE /api/v1/groups/:id/members/:userId - Remove a member from a group
-router.delete('/:id/members/:userId', removeMember);
+// Initialize groups (admin only)
+router.post("/initialize", protect, initializeGroups);
 
 export default router;

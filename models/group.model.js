@@ -1,5 +1,4 @@
-// models/group.model.js
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const ratingSchema = new mongoose.Schema({
   userId: {
@@ -7,41 +6,45 @@ const ratingSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  userName: {
+    type: String,
+    required: true
+  },
   communication: {
     type: Number,
+    required: true,
     min: 0,
-    max: 40,
-    required: true
+    max: 40
   },
   presentation: {
     type: Number,
+    required: true,
     min: 0,
-    max: 40,
-    required: true
+    max: 40
   },
   content: {
     type: Number,
+    required: true,
     min: 0,
-    max: 40,
-    required: true
+    max: 40
   },
   helpfulForCompany: {
     type: Number,
+    required: true,
     min: 0,
-    max: 40,
-    required: true
+    max: 40
   },
   helpfulForInterns: {
     type: Number,
+    required: true,
     min: 0,
-    max: 40,
-    required: true
+    max: 40
   },
   participation: {
     type: Number,
+    required: true,
     min: 0,
-    max: 40,
-    required: true
+    max: 40
   },
   comments: {
     type: String,
@@ -49,7 +52,8 @@ const ratingSchema = new mongoose.Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now
+    default: Date.now,
+    expires: 604800 // 7 days in seconds (7 * 24 * 60 * 60)
   }
 });
 
@@ -61,8 +65,26 @@ const groupSchema = new mongoose.Schema({
     trim: true
   },
   members: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    name: {
+      type: String,
+      required: true
+    },
+    email: {
+      type: String,
+      required: true
+    },
+    branch: {
+      type: String,
+      default: "Not specified"
+    },
+    joinDate: {
+      type: Date,
+      default: Date.now
+    }
   }],
   ratings: [ratingSchema],
   totalRating: {
@@ -96,18 +118,13 @@ const groupSchema = new mongoose.Schema({
   avgParticipation: {
     type: Number,
     default: 0
-  },
-  averageRating: {
-    type: Number,
-    default: 0
   }
 }, {
   timestamps: true
 });
 
-// Method to update aggregated ratings
-// Method to update aggregated ratings
-groupSchema.methods.updateRatings = function() {
+// Update group statistics when a rating is added
+groupSchema.methods.updateStats = function() {
   if (this.ratings.length === 0) {
     this.totalRating = 0;
     this.ratingCount = 0;
@@ -120,27 +137,23 @@ groupSchema.methods.updateRatings = function() {
     return;
   }
 
+  const totalComm = this.ratings.reduce((sum, r) => sum + r.communication, 0);
+  const totalPres = this.ratings.reduce((sum, r) => sum + r.presentation, 0);
+  const totalCont = this.ratings.reduce((sum, r) => sum + r.content, 0);
+  const totalComp = this.ratings.reduce((sum, r) => sum + r.helpfulForCompany, 0);
+  const totalInt = this.ratings.reduce((sum, r) => sum + r.helpfulForInterns, 0);
+  const totalPart = this.ratings.reduce((sum, r) => sum + r.participation, 0);
+  
   this.ratingCount = this.ratings.length;
-  
-  // Calculate averages for each category
-  this.avgCommunication = this.ratings.reduce((sum, rating) => sum + rating.communication, 0) / this.ratingCount;
-  this.avgPresentation = this.ratings.reduce((sum, rating) => sum + rating.presentation, 0) / this.ratingCount;
-  this.avgContent = this.ratings.reduce((sum, rating) => sum + rating.content, 0) / this.ratingCount;
-  this.avgHelpfulForCompany = this.ratings.reduce((sum, rating) => sum + rating.helpfulForCompany, 0) / this.ratingCount;
-  this.avgHelpfulForInterns = this.ratings.reduce((sum, rating) => sum + rating.helpfulForInterns, 0) / this.ratingCount;
-  this.avgParticipation = this.ratings.reduce((sum, rating) => sum + rating.participation, 0) / this.ratingCount;
-  
-  // Calculate total rating (sum of all averages)
-  this.totalRating = this.avgCommunication + this.avgPresentation + this.avgContent + 
-                    this.avgHelpfulForCompany + this.avgHelpfulForInterns + this.avgParticipation;
+  this.avgCommunication = totalComm / this.ratingCount;
+  this.avgPresentation = totalPres / this.ratingCount;
+  this.avgContent = totalCont / this.ratingCount;
+  this.avgHelpfulForCompany = totalComp / this.ratingCount;
+  this.avgHelpfulForInterns = totalInt / this.ratingCount;
+  this.avgParticipation = totalPart / this.ratingCount;
+  this.totalRating = (totalComm + totalPres + totalCont + totalComp + totalInt + totalPart) / this.ratingCount;
 };
 
-// Pre-save middleware to update ratings
-groupSchema.pre('save', function(next) {
-  if (this.isModified('ratings')) {
-    this.updateRatings();
-  }
-  next();
-});
+const Group = mongoose.model('Group', groupSchema);
 
-export default mongoose.model('Group', groupSchema);
+export default Group;
