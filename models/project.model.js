@@ -1,7 +1,12 @@
 // models/project.model.js
 import mongoose from "mongoose";
 
+// models/project.model.js
 const checkpointSchema = new mongoose.Schema({
+  _id: {
+    type: mongoose.Schema.Types.ObjectId,
+    auto: true, // This will auto-generate ObjectIds
+  },
   label: {
     type: String,
     required: true,

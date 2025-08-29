@@ -174,18 +174,13 @@ export const updateCheckpoint = async (req, res) => {
     const { id, checkpointId } = req.params;
     const updates = req.body;
 
-    // Validate ID format
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid project ID" });
-    }
-
     const project = await Project.findById(id);
     
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    // Find the checkpoint
+    // Find the checkpoint by _id
     const checkpoint = project.checkpoints.id(checkpointId);
     if (!checkpoint) {
       return res.status(404).json({ error: "Checkpoint not found" });
@@ -193,15 +188,6 @@ export const updateCheckpoint = async (req, res) => {
 
     // Update checkpoint
     Object.assign(checkpoint, updates);
-    
-    // Recalculate progress if status changed to/from completed
-    if (updates.status) {
-      const completedValue = project.checkpoints
-        .filter(cp => cp.status === "completed")
-        .reduce((sum, cp) => sum + cp.value, 0);
-      
-      project.progress = Math.min(100, Math.max(0, completedValue));
-    }
     
     await project.save();
     
