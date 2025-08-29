@@ -15,12 +15,65 @@ export const addProject = async (req, res) => {
     // Filter out any empty links
     const filteredLinks = links ? links.filter(link => link.title && link.url) : [];
 
-    // Default checkpoints (you can customize these)
+    // Default checkpoints (all 42 checkpoints)
     const defaultCheckpoints = [
       // Project Initiation and Planning (9 checkpoints)
       { label: "Bid Award & Contract Review", value: 100/42, section: "Project Initiation and Planning", status: "not started" },
       { label: "Project Kick-off Meeting", value: 100/42, section: "Project Initiation and Planning", status: "not started" },
-      // Add all other default checkpoints here...
+      { label: "Define Project Scope & Objectives", value: 100/42, section: "Project Initiation and Planning", status: "not started" },
+      { label: "Stakeholder Identification & Analysis", value: 100/42, section: "Project Initiation and Planning", status: "not started" },
+      { label: "Requirements Gathering & Analysis", value: 100/42, section: "Project Initiation and Planning", status: "not started" },
+      { label: "Feasibility Study & Risk Assessment", value: 100/42, section: "Project Initiation and Planning", status: "not started" },
+      { label: "Resource Planning", value: 100/42, section: "Project Initiation and Planning", status: "not started" },
+      { label: "Budget Allocation & Financial Planning", value: 100/42, section: "Project Initiation and Planning", status: "not started" },
+      { label: "Project Management Plan Development", value: 100/42, section: "Project Initiation and Planning", status: "not started" },
+
+      // Preliminary Design & Concept Development (4 checkpoints)
+      { label: "Detailed Requirements Specification for Testing Unit", value: 100/42, section: "Preliminary Design & Concept Development", status: "not started" },
+      { label: "Concept Design & Development", value: 100/42, section: "Preliminary Design & Concept Development", status: "not started" },
+      { label: "Preliminary Design Review (PDR) Preparation", value: 100/42, section: "Preliminary Design & Concept Development", status: "not started" },
+      { label: "PDR Presentation & Approval", value: 100/42, section: "Preliminary Design & Concept Development", status: "not started" },
+
+      // Detailed Design & Engineering (5 checkpoints)
+      { label: "System Level Design", value: 100/42, section: "Detailed Design & Engineering", status: "not started" },
+      { label: "Sub-System Detailed Design", value: 100/42, section: "Detailed Design & Engineering", status: "not started" },
+      { label: "Component Selection & Sourcing Strategy", value: 100/42, section: "Detailed Design & Engineering", status: "not started" },
+      { label: "Drawings & Documentation Package Development", value: 100/42, section: "Detailed Design & Engineering", status: "not started" },
+      { label: "Design Validation & Simulation", value: 100/42, section: "Detailed Design & Engineering", status: "not started" },
+
+      // Procurement & Manufacturing (4 checkpoints)
+      { label: "Bill of Material (BOM) Finalization", value: 100/42, section: "Procurement & Manufacturing", status: "not started" },
+      { label: "Purchase Order (PO) Issuance & Tracking", value: 100/42, section: "Procurement & Manufacturing", status: "not started" },
+      { label: "Component Manufacturing & Assembly", value: 100/42, section: "Procurement & Manufacturing", status: "not started" },
+      { label: "Quality Control & Inspection of Manufactured Parts", value: 100/42, section: "Procurement & Manufacturing", status: "not started" },
+
+      // Assembly & Integration (5 checkpoints)
+      { label: "Assembly & Integration", value: 100/42, section: "Assembly & Integration", status: "not started" },
+      { label: "Sub-system Assembly", value: 100/42, section: "Assembly & Integration", status: "not started" },
+      { label: "Integration of Sub-systems into Main Testing Unit", value: 100/42, section: "Assembly & Integration", status: "not started" },
+      { label: "Cabling & Wiring Installation", value: 100/42, section: "Assembly & Integration", status: "not started" },
+      { label: "Initial Power-up & Basic Functionality Tests", value: 100/42, section: "Assembly & Integration", status: "not started" },
+
+      // Testing & Validation (7 checkpoints)
+      { label: "Factory Acceptance Test (FAT) Plan Development", value: 100/42, section: "Testing & Validation", status: "not started" },
+      { label: "FAT Execution", value: 100/42, section: "Testing & Validation", status: "not started" },
+      { label: "Defect Identification & Resolution", value: 100/42, section: "Testing & Validation", status: "not started" },
+      { label: "Client/User Acceptance Test (UAT) Plan Development", value: 100/42, section: "Testing & Validation", status: "not started" },
+      { label: "UAT Execution", value: 100/42, section: "Testing & Validation", status: "not started" },
+      { label: "Performance & Safety Compliance Testing", value: 100/42, section: "Testing & Validation", status: "not started" },
+      { label: "Test Report Generation & Review", value: 100/42, section: "Testing & Validation", status: "not started" },
+
+      // Deployment & Training (5 checkpoints)
+      { label: "Packaging & Transportation of Testing Unit", value: 100/42, section: "Deployment & Training", status: "not started" },
+      { label: "On-site Installation & Setup", value: 100/42, section: "Deployment & Training", status: "not started" },
+      { label: "Site Acceptance Test (SAT) Execution", value: 100/42, section: "Deployment & Training", status: "not started" },
+      { label: "Operational Training for End-Users", value: 100/42, section: "Deployment & Training", status: "not started" },
+      { label: "Maintenance Training for Technical Staff", value: 100/42, section: "Deployment & Training", status: "not started" },
+
+      // Project Closure & Post-Deployment (3 checkpoints)
+      { label: "Final Documentation Handover", value: 100/42, section: "Project Closure & Post-Deployment", status: "not started" },
+      { label: "Warranty & Support Agreement Finalization", value: 100/42, section: "Project Closure & Post-Deployment", status: "not started" },
+      { label: "Final Project Report & Financial Closure", value: 100/42, section: "Project Closure & Post-Deployment", status: "not started" }
     ];
 
     const project = await Project.create({ 
