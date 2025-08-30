@@ -16,7 +16,11 @@ const router = express.Router();
 // Get all groups
 router.get("/", protect, getAllGroups);
 
+// 🔹 Place this BEFORE /:groupId
 router.get("/live-ratings", getLiveRatings);
+
+// Initialize groups (admin only)
+router.post("/initialize", protect, initializeGroups);
 
 // Get specific group
 router.get("/:groupId", protect, getGroup);
@@ -32,8 +36,5 @@ router.post("/:groupId/rate", protect, rateGroup);
 
 // Remove rating
 router.delete("/:groupId/rating", protect, removeRating);
-
-// Initialize groups (admin only)
-router.post("/initialize", protect, initializeGroups);
 
 export default router;
