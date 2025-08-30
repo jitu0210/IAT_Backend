@@ -6,17 +6,18 @@ import {
   leaveGroup,
   rateGroup,
   removeRating,
-  initializeGroups
+  initializeGroups,
+  getLiveRatings
 } from "../controllers/group.controller.js";
 import protect from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 // Get all groups
-router.get("/", getAllGroups);
+router.get("/", protect, getAllGroups);
 
 // Get specific group
-router.get("/:groupId", getGroup);
+router.get("/:groupId", protect, getGroup);
 
 // Join a group
 router.post("/:groupId/join", protect, joinGroup);
@@ -29,6 +30,9 @@ router.post("/:groupId/rate", protect, rateGroup);
 
 // Remove rating
 router.delete("/:groupId/rating", protect, removeRating);
+
+// Get live ratings
+router.get("/live-ratings", getLiveRatings);
 
 // Initialize groups (admin only)
 router.post("/initialize", protect, initializeGroups);

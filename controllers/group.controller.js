@@ -1,11 +1,30 @@
 import Group from "../models/group.model.js";
 import User from "../models/user.model.js";
 
-// Get all groups
+// Get all groups with user-specific data
 export const getAllGroups = async (req, res) => {
   try {
+    const userId = req.user?.id;
     const groups = await Group.find().sort({ totalRating: -1 });
-    res.json(groups);
+    
+    // Add user-specific data to each group
+    const groupsWithUserData = groups.map(group => {
+      const groupObj = group.toObject();
+      
+      // Check if user is a member
+      groupObj.isMember = userId ? group.members.some(member => 
+        member.userId.toString() === userId
+      ) : false;
+      
+      // Check if user has rated this group
+      groupObj.hasRated = userId ? group.ratings.some(rating => 
+        rating.userId.toString() === userId
+      ) : false;
+      
+      return groupObj;
+    });
+    
+    res.json(groupsWithUserData);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -17,18 +36,34 @@ export const joinGroup = async (req, res) => {
     const { groupId } = req.params;
     const userId = req.user.id;
     
+    const user = await User.findById(userId);
     const group = await Group.findById(groupId);
+    
     if (!group) {
       return res.status(404).json({ message: 'Group not found' });
     }
     
-    // Check if user is already a member
-    const isMember = group.members.some(member => member.userId.toString() === userId);
-    if (isMember) {
-      return res.status(400).json({ message: 'You are already a member of this group' });
+    // Check if user is already in any group
+    const userGroups = await Group.find({ 
+      "members.userId": userId 
+    });
+    
+    if (userGroups.length > 0) {
+      return res.status(400).json({ 
+        message: 'You can only join one group at a time. Leave your current group first.' 
+      });
     }
     
-    const user = await User.findById(userId);
+    // Check if user is already a member of this group
+    const isMember = group.members.some(member => 
+      member.userId.toString() === userId
+    );
+    
+    if (isMember) {
+      return res.status(400).json({ 
+        message: 'You are already a member of this group' 
+      });
+    }
     
     // Add user to group members
     group.members.push({
@@ -61,9 +96,14 @@ export const leaveGroup = async (req, res) => {
     }
     
     // Check if user is a member
-    const memberIndex = group.members.findIndex(member => member.userId.toString() === userId);
+    const memberIndex = group.members.findIndex(member => 
+      member.userId.toString() === userId
+    );
+    
     if (memberIndex === -1) {
-      return res.status(400).json({ message: 'You are not a member of this group' });
+      return res.status(400).json({ 
+        message: 'You are not a member of this group' 
+      });
     }
     
     // Remove user from group members
@@ -71,7 +111,9 @@ export const leaveGroup = async (req, res) => {
     
     // Remove group from user's joined groups
     const user = await User.findById(userId);
-    user.joinedGroups = user.joinedGroups.filter(id => id.toString() !== groupId);
+    user.joinedGroups = user.joinedGroups.filter(id => 
+      id.toString() !== groupId
+    );
     
     await Promise.all([group.save(), user.save()]);
     
@@ -101,16 +143,32 @@ export const rateGroup = async (req, res) => {
       return res.status(404).json({ message: 'Group not found' });
     }
     
+    // Check if user is trying to rate their own group
+    const isMember = group.members.some(member => 
+      member.userId.toString() === userId
+    );
+    
+    if (isMember) {
+      return res.status(400).json({ 
+        message: 'You cannot rate your own group' 
+      });
+    }
+    
     // Check if user has already rated this group
-    const userRatingIndex = group.ratings.findIndex(rating => rating.userId.toString() === userId);
+    const userRatingIndex = group.ratings.findIndex(rating => 
+      rating.userId.toString() === userId
+    );
+    
     if (userRatingIndex !== -1) {
-      return res.status(400).json({ message: 'You have already rated this group' });
+      return res.status(400).json({ 
+        message: 'You have already rated this group' 
+      });
     }
     
     const user = await User.findById(userId);
     
     // Add new rating
-    group.ratings.push({
+    const newRating = {
       userId: user._id,
       userName: user.name,
       communication,
@@ -120,7 +178,9 @@ export const rateGroup = async (req, res) => {
       helpfulForInterns,
       participation,
       comments
-    });
+    };
+    
+    group.ratings.push(newRating);
     
     // Update group statistics
     group.updateStats();
@@ -128,12 +188,17 @@ export const rateGroup = async (req, res) => {
     // Add rating record to user
     user.ratings.push({
       groupId: group._id,
+      groupName: group.name,
       ratedAt: new Date()
     });
     
     await Promise.all([group.save(), user.save()]);
     
-    res.json({ message: 'Rating submitted successfully', group });
+    res.json({ 
+      message: 'Rating submitted successfully', 
+      group,
+      newRating 
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -151,9 +216,14 @@ export const removeRating = async (req, res) => {
     }
     
     // Find and remove user's rating
-    const ratingIndex = group.ratings.findIndex(rating => rating.userId.toString() === userId);
+    const ratingIndex = group.ratings.findIndex(rating => 
+      rating.userId.toString() === userId
+    );
+    
     if (ratingIndex === -1) {
-      return res.status(400).json({ message: 'You have not rated this group' });
+      return res.status(400).json({ 
+        message: 'You have not rated this group' 
+      });
     }
     
     group.ratings.splice(ratingIndex, 1);
@@ -163,7 +233,9 @@ export const removeRating = async (req, res) => {
     
     // Remove rating record from user
     const user = await User.findById(userId);
-    user.ratings = user.ratings.filter(rating => rating.groupId.toString() !== groupId);
+    user.ratings = user.ratings.filter(rating => 
+      rating.groupId.toString() !== groupId
+    );
     
     await Promise.all([group.save(), user.save()]);
     
@@ -184,6 +256,49 @@ export const getGroup = async (req, res) => {
     }
     
     res.json(group);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get live ratings for real-time updates
+export const getLiveRatings = async (req, res) => {
+  try {
+    // Get recent ratings (last 15 minutes)
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+    
+    const groups = await Group.find({
+      "ratings.createdAt": { $gte: fifteenMinutesAgo }
+    }).populate('ratings.userId', 'name');
+    
+    const recentRatings = [];
+    
+    groups.forEach(group => {
+      group.ratings.forEach(rating => {
+        if (rating.createdAt >= fifteenMinutesAgo) {
+          recentRatings.push({
+            groupName: group.name,
+            userName: rating.userName,
+            points: rating.communication + rating.presentation + rating.content + 
+                   rating.helpfulForCompany + rating.helpfulForInterns + rating.participation,
+            time: rating.createdAt,
+            details: {
+              communication: rating.communication,
+              presentation: rating.presentation,
+              content: rating.content,
+              helpfulForCompany: rating.helpfulForCompany,
+              helpfulForInterns: rating.helpfulForInterns,
+              participation: rating.participation
+            }
+          });
+        }
+      });
+    });
+    
+    // Sort by most recent
+    recentRatings.sort((a, b) => b.time - a.time);
+    
+    res.json(recentRatings.slice(0, 15)); // Return only the 15 most recent
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
