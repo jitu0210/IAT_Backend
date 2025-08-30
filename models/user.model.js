@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema(
   {
     username: {
       type: String,
-      required: true, // <-- typo fixed (was `require`)
+      required: true,
     },
     email: {
       type: String,
@@ -19,11 +19,33 @@ const userSchema = new mongoose.Schema(
     branch: {
       type: String,
       enum: ["MBA", "Electrical", "Electronics", "CSE", "Mechanical"],
-      required: false,
     },
     refreshtoken: {
       type: String,
     },
+
+    // 🔹 Add joinedGroups array
+    joinedGroups: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Group",
+      },
+    ],
+
+    // 🔹 Add ratings array
+    ratings: [
+      {
+        groupId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Group",
+        },
+        groupName: String,
+        ratedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );
