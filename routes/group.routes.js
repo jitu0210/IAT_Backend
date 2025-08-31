@@ -7,7 +7,7 @@ import {
   rateGroup,
   removeRating,
   initializeGroups,
-  getLiveRatings
+  getGroupTotals
 } from "../controllers/group.controller.js";
 import protect from "../middleware/authMiddleware.js";
 
@@ -15,9 +15,6 @@ const router = express.Router();
 
 // Get all groups
 router.get("/", protect, getAllGroups);
-
-// 🔹 Place this BEFORE /:groupId
-router.get("/live-ratings", getLiveRatings);
 
 // group ratings
 router.get("/group-totals", getGroupTotals);
