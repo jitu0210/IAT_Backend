@@ -7,7 +7,6 @@ import {
   rateGroup,
   removeRating,
   initializeGroups,
-  getLiveRatings,
   getGroupTotals   // ✅ added import
 } from "../controllers/group.controller.js";
 import protect from "../middleware/authMiddleware.js";

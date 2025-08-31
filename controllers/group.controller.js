@@ -125,6 +125,91 @@ export const leaveGroup = async (req, res) => {
 };
 
 // Rate a group
+// export const rateGroup = async (req, res) => {
+//   try {
+//     const { groupId } = req.params;
+//     const userId = req.user.id;
+//     const {
+//       communication,
+//       presentation,
+//       content,
+//       helpfulForCompany,
+//       helpfulForInterns,
+//       participation,
+//       comments,
+//     } = req.body;
+
+//     const group = await Group.findById(groupId);
+//     if (!group) {
+//       return res.status(404).json({ message: "Group not found" });
+//     }
+
+//     // Check if user is trying to rate their own group
+//     const isMember = group.members.some(
+//       (member) => member.userId.toString() === userId
+//     );
+
+//     if (isMember) {
+//       return res.status(400).json({
+//         message: "You cannot rate your own group",
+//       });
+//     }
+
+//     // Check if user has already rated this group
+//     const userRatingIndex = group.ratings.findIndex(
+//       (rating) => rating.userId.toString() === userId
+//     );
+
+//     if (userRatingIndex !== -1) {
+//       return res.status(400).json({
+//         message: "You have already rated this group",
+//       });
+//     }
+
+//     const user = await User.findById(userId);
+
+//     // Add new rating
+//     const newRating = {
+//       userId: user._id,
+//       userName: user.name,
+//       communication,
+//       presentation,
+//       content,
+//       helpfulForCompany,
+//       helpfulForInterns,
+//       participation,
+//       comments,
+//     };
+
+//     group.ratings.push(newRating);
+
+//     // Update group statistics
+//     group.updateStats();
+
+//     // Add rating record to user
+//     user.ratings.push({
+//       groupId: group._id,
+//       groupName: group.name,
+//       ratedAt: new Date(),
+//     });
+
+//     await Promise.all([group.save(), user.save()]);
+
+//     // In your rateGroup controller, after saving the rating:
+//     group.previousTotal = group.totalRating || 0;
+//     await group.save();
+
+//     res.json({
+//       message: "Rating submitted successfully",
+//       group,
+//       newRating,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+// Rate a group
 export const rateGroup = async (req, res) => {
   try {
     const { groupId } = req.params;
@@ -168,6 +253,9 @@ export const rateGroup = async (req, res) => {
 
     const user = await User.findById(userId);
 
+    // Store previous total before adding new rating
+    const previousTotal = group.totalRating || 0;
+
     // Add new rating
     const newRating = {
       userId: user._id,
@@ -186,6 +274,9 @@ export const rateGroup = async (req, res) => {
     // Update group statistics
     group.updateStats();
 
+    // Set previousTotal before saving
+    group.previousTotal = previousTotal;
+
     // Add rating record to user
     user.ratings.push({
       groupId: group._id,
@@ -194,10 +285,6 @@ export const rateGroup = async (req, res) => {
     });
 
     await Promise.all([group.save(), user.save()]);
-
-    // In your rateGroup controller, after saving the rating:
-    group.previousTotal = group.totalRating || 0;
-    await group.save();
 
     res.json({
       message: "Rating submitted successfully",
