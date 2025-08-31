@@ -19,6 +19,9 @@ router.get("/", protect, getAllGroups);
 // 🔹 Place this BEFORE /:groupId
 router.get("/live-ratings", getLiveRatings);
 
+// group ratings
+router.get("/group-totals", getGroupTotals);
+
 // Initialize groups (admin only)
 router.post("/initialize", protect, initializeGroups);
 

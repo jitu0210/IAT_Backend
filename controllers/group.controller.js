@@ -262,43 +262,40 @@ export const getGroup = async (req, res) => {
 };
 
 // Get live ratings for real-time updates
-export const getLiveRatings = async (req, res) => {
+export const getGroupTotals = async (req, res) => {
   try {
-    // Get recent ratings (last 15 minutes)
-    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-    
-    const groups = await Group.find({
-      "ratings.createdAt": { $gte: fifteenMinutesAgo }
-    }).populate('ratings.userId', 'name');
-    
-    const recentRatings = [];
-    
-    groups.forEach(group => {
-      group.ratings.forEach(rating => {
-        if (rating.createdAt >= fifteenMinutesAgo) {
-          recentRatings.push({
-            groupName: group.name,
-            userName: rating.userName,
-            points: rating.communication + rating.presentation + rating.content + 
-                   rating.helpfulForCompany + rating.helpfulForInterns + rating.participation,
-            time: rating.createdAt,
-            details: {
-              communication: rating.communication,
-              presentation: rating.presentation,
-              content: rating.content,
-              helpfulForCompany: rating.helpfulForCompany,
-              helpfulForInterns: rating.helpfulForInterns,
-              participation: rating.participation
-            }
-          });
-        }
-      });
+    // Fetch all groups
+    const groups = await Group.find().lean();
+
+    // Transform groups into totals
+    const groupTotals = groups.map(group => {
+      // Calculate total points for group from ratings array
+      const currentTotal = group.ratings.reduce((sum, rating) => {
+        return (
+          sum +
+          rating.communication +
+          rating.presentation +
+          rating.content +
+          rating.helpfulForCompany +
+          rating.helpfulForInterns +
+          rating.participation
+        );
+      }, 0);
+
+      // Assume previous total is stored in DB (example: group.previousTotal)
+      // If not in schema yet, you need to add it
+      const previousTotal = group.previousTotal || 0;
+
+      return {
+        groupId: group._id,
+        groupName: group.name,
+        previousTotal,
+        currentTotal,
+        difference: currentTotal - previousTotal,
+      };
     });
-    
-    // Sort by most recent
-    recentRatings.sort((a, b) => b.time - a.time);
-    
-    res.json(recentRatings.slice(0, 15)); // Return only the 15 most recent
+
+    res.json(groupTotals);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
